@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 
@@ -17,11 +18,20 @@ namespace GetData
 {
     class Program
     {
-       
+
         [STAThread]
         static void Main(string[] args)
         {
-            string url = "https://shopee.vn/flash_sale";
+            #region const
+            const string url = "https://shopee.vn/flash_sale";
+            const string linkToDriverServer = "D:\\Code\\GetdataFromWeb\\GetData\\GetDataFromWeb\\GetData\\GetData\\bin\\Debug";
+            const string tagNeedLoad = "flash-sale-item-card__buy-now-button";
+            const string xPathListSelect = "//div[@class = 'flash-sale-items']/div";
+            const string xPathItemName = ".//div[@class = 'flash-sale-item-card__item-name']";
+            const string xPathItemPrice = ".//span[@class='item-price-number']";
+            #endregion
+
+            var items = new List<object>();
 
             HtmlWeb htmlWeb = new HtmlWeb()
             {
@@ -29,47 +39,47 @@ namespace GetData
                 OverrideEncoding = Encoding.UTF8
             };
 
+            // use headless mode
             ChromeOptions options = new ChromeOptions();
             options.AddArgument("headless");
 
-            var driverService = ChromeDriverService.CreateDefaultService("C:\\Users\\Admin\\Downloads\\Compressed\\chromedriver_win32_2");
+            var driverService = ChromeDriverService.CreateDefaultService(linkToDriverServer);
+            //hide your brower
             driverService.HideCommandPromptWindow = true;
-             var driver = new ChromeDriver(driverService, options);
+            var driver = new ChromeDriver(driverService, options);
             driver.Navigate().GoToUrl(url);
-            //
+
             try
             {
-                bool check = driver.PageSource.Contains("flash-sale-item-card__buy-now-button");
+
+                bool check = driver.PageSource.Contains(tagNeedLoad);
+                // Wait until tagNeedLoad loaded
                 while (!check)
                 {
-                     check = driver.PageSource.Contains("flash-sale-item-card__buy-now-button");
+                    check = driver.PageSource.Contains(tagNeedLoad);
                 }
 
                 HtmlDocument doc = new HtmlDocument();
                 var html = driver.PageSource.ToString();
                 doc.LoadHtml(html);
 
-                var saleItems = doc.DocumentNode.SelectNodes("//div[@class = 'flash-sale-items']/div").ToList();
-
-                var items = new List<object>();
+                var saleItems = doc.DocumentNode.SelectNodes(xPathListSelect).ToList();
 
                 Console.OutputEncoding = Encoding.UTF8;
                 foreach (var item in saleItems)
                 {
-                    var itemName = item.SelectSingleNode(".//div[@class = 'flash-sale-item-card__item-name']").InnerText;
-                    var price = item.SelectSingleNode(".//span[@class='item-price-number']").InnerText;
-                    Console.Write(itemName);
-                    Console.WriteLine("price : "+price);
-                    items.Add(new { itemName, price});
+                    var itemName = item.SelectSingleNode(xPathItemName).InnerText;
+                    var price = item.SelectSingleNode(xPathItemPrice).InnerText;
+                    items.Add(new { itemName, price });
                 }
-                Console.ReadKey();
+                driver.Close();
             }
             catch (Exception ex)
             {
                 driver.Close();
                 throw ex;
             }
-            
+
         }
     }
 }
